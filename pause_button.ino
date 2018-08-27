@@ -3,8 +3,10 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include "Button.h"
-//#include <LiquidCrystal_I2C.h>
-// LiquidCrystal_I2C lcd(0x27,16,2);
+
+#define PIN_RED_LED 2
+#define PIN_GREEN_LED 3
+#define PIN_BTN_PAUSE 6
 
 const char* CMD_PAUSE = "pause";
 const char* NAME_ALL = "all";
@@ -29,8 +31,7 @@ const int STATE_INIT = 2;
 const int STATE_ERROR = 3;
 const int STATE_PAUSED = 6;
 
-const int PIN_BTN_PAUSE = 6;
-const int PAUSE_TIMEOUT_SEC = 4;
+const int PAUSE_TIMEOUT_SEC = 30;
 
 int state = STATE_INIT;
 
@@ -59,13 +60,13 @@ Button buttonPause = Button(PIN_BTN_PAUSE, onPauseClick);
 
 void setup() {
   Serial.begin(9600);
+  pinMode(PIN_RED_LED, OUTPUT);
+  pinMode(PIN_GREEN_LED, OUTPUT);
+  
   Ethernet.begin(mac, ip);
 
   client.setServer(mqtt_server, 1883);
   client.setCallback(onNewMessage);
-  
-//  lcd.init();                     
-//  lcd.backlight();
 }
 
 void loop() {  
@@ -80,17 +81,7 @@ void loop() {
     state = STATE_OK;
   }
 
-  
-//  debugPrint();
-  if (isStateChanged()) {
-    updateDisplay();
-  }
-
-//  delay(100);
-}
-
-boolean isStateChanged() {
-  return true;
+  updateLed();
 }
 
 void onNewMessage(char* topic, byte* payload, unsigned int length) {
@@ -118,32 +109,26 @@ void onNewMessage(char* topic, byte* payload, unsigned int length) {
   }
 }
 
-void updateDisplay() {
-//  lcd.setCursor(0, 0);
-//  if (state == STATE_INIT) {
-//    lcd.print("CONN ");
-//  } else if (state == STATE_OK) {
-//    lcd.print("OK   ");
-//  } else {
-//    lcd.print("UNKNO");
-//  }
-//
-//  int pausedSensors = 0;
-//  if (is01Paused) {
-//    pausedSensors++;
-//  }
-//  if (is02Paused) {
-//    pausedSensors++;
-//  }
-//  
-//  lcd.setCursor(15, 0);
-//  if (pausedSensors <= 0) {
-//    lcd.print(" ");
-//  } else {
-//    lcd.print(pausedSensors);
-//  }
-//  
-//  lcd.setCursor(11, 1);
+void updateLed() {
+  if (state == STATE_INIT) {
+    greenOn();
+    delay(250);
+    greenOff();
+    delay(250);
+    return;
+  }
+
+  int btn = digitalRead(PIN_BTN_PAUSE);
+  if (btn == LOW) {
+    redOn();
+    greenOff();
+  } else if (state == STATE_OK) {
+    greenOn();
+    redOff();
+  } else { // unknown state
+    redOn();
+    greenOff();
+  }
 }
 
 void setup_mqtt() {
@@ -172,6 +157,23 @@ void setup_mqtt() {
 boolean eq(const char* a1, const char* a2) {
   return strcmp(a1, a2) == 0;
 }
+
+void greenOn() {
+  digitalWrite(PIN_GREEN_LED, HIGH);
+}
+
+void greenOff() {
+  digitalWrite(PIN_GREEN_LED, LOW);
+}
+
+void redOn() {
+  digitalWrite(PIN_RED_LED, HIGH);
+}
+
+void redOff() {
+  digitalWrite(PIN_RED_LED, LOW);
+}
+
 
 void debugPrint() {
   Serial.println(" ");
